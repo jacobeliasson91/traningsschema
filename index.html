@@ -79,10 +79,10 @@
 
         .table-container {
             overflow-x: auto;
-            background: white;
-            padding: 12px;
+            background: transparent; /* Borttagen vit bakgrund */
+            padding: 0;
             border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            box-shadow: none;
         }
 
         table {
@@ -107,7 +107,7 @@
         /* Tydliga och breda mellanrum mellan dagarna */
         .day-group-end {
             border-right: 24px solid var(--bg-color) !important;
-            box-shadow: 2px 0 3px rgba(0,0,0,0.03);
+            box-shadow: none;
         }
 
         th.day-header {
@@ -152,7 +152,7 @@
         }
 
         td.time-col {
-            background-color: #f1f5f9;
+            background-color: #e2e8f0;
             font-weight: bold;
             width: 130px;
             color: #334155;
@@ -173,8 +173,8 @@
         }
 
         .time-input:hover {
-            background-color: #e2e8f0;
-            border-color: #cbd5e1;
+            background-color: #cbd5e1;
+            border-color: #94a3b8;
         }
 
         .time-input:focus {
@@ -187,7 +187,7 @@
             height: 48px;
             padding: 4px;
             vertical-align: middle;
-            background-color: #fafafa;
+            background-color: transparent;
         }
 
         .team-slot-wrapper {
