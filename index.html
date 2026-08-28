@@ -483,12 +483,8 @@
     </div>
 
     <script>
-        /* ========================================================
-           🛠️ MOLNLAGRING (JSONBin.io)
-           ======================================================== */
         const BIN_ID = '6a91c98af5f4af5e294eca71';
         const API_KEY = '$2a$10$UX4oAIFBKBUsF4SwhVXdMOV2B3n83/NNwFRw2mbvdxMk0a2XyHt46';
-        /* ======================================================== */
 
         const pitches = ["Plan 1", "Plan 2", "Plan 3", "Plan 4", "Plan 5"];
         const daysCount = 5;
@@ -517,7 +513,6 @@
                 for (let tIdx = 0; tIdx < 3; tIdx++) {
                     for (let d = 0; d < daysCount; d++) {
                         if (scheduleData[`box_${pIdx}_${tIdx}_${d}_2`] !== undefined) {
-                            
                             let activeTeams = [];
                             for (let h = 0; h < 3; h++) {
                                 const bKey = `box_${pIdx}_${tIdx}_${d}_${h}`;
@@ -834,8 +829,9 @@
                     if (data.pitchSlotCounts) pitchSlotCounts = data.pitchSlotCounts;
                 }
             } catch (error) {
-                console.error('Kunde inte hämta schemat:', error);
+                console.warn('Nätverksfel eller lokal öppning, ritar tomt/lokalt schema:', error);
             } finally {
+                // Ritar alltid ut schemat oavsett om nätverket svarade eller inte
                 buildTable();
             }
         }
@@ -849,7 +845,8 @@
             }
         }
 
-        window.addEventListener('DOMContentLoaded', loadSchedule);
+        // Starta rendering direkt när DOM är laddad
+        document.addEventListener('DOMContentLoaded', loadSchedule);
     </script>
 </body>
 </html>
