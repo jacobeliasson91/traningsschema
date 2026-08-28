@@ -89,7 +89,7 @@
             border-collapse: separate;
             border-spacing: 0;
             width: 100%;
-            min-width: 980px;
+            min-width: 1050px;
         }
 
         th, td {
@@ -104,14 +104,16 @@
             border-left: 1px solid var(--table-border);
         }
 
+        /* Tydliga och breda mellanrum mellan dagarna */
         .day-group-end {
-            border-right: 8px solid var(--bg-color) !important;
+            border-right: 24px solid var(--bg-color) !important;
+            box-shadow: 2px 0 3px rgba(0,0,0,0.03);
         }
 
         th.day-header {
             background-color: var(--header-bg);
             color: var(--header-text);
-            padding: 10px;
+            padding: 12px 10px;
             font-size: 14px;
             width: 18%;
         }
@@ -121,7 +123,7 @@
             color: var(--pitch-text);
             padding: 8px 14px;
             font-size: 15px;
-            border-top: 14px solid var(--bg-color) !important;
+            border-top: 16px solid var(--bg-color) !important;
         }
 
         .pitch-header-content {
@@ -183,7 +185,7 @@
 
         .slot {
             height: 48px;
-            padding: 3px;
+            padding: 4px;
             vertical-align: middle;
             background-color: #fafafa;
         }
@@ -442,7 +444,7 @@
         <table>
             <thead>
                 <tr>
-                    <th class="day-header" style="width:130px;">Plan / Tid</th>
+                    <th class="day-header day-group-end" style="width:130px;">Plan / Tid</th>
                     <th class="day-header day-group-end">Måndag</th>
                     <th class="day-header day-group-end">Tisdag</th>
                     <th class="day-header day-group-end">Onsdag</th>
@@ -455,6 +457,7 @@
         </table>
     </div>
 
+    <!-- Popup Modal -->
     <div class="modal-overlay" id="editModal">
         <div class="modal-card">
             <div class="modal-header">
@@ -563,7 +566,7 @@
                     const tr = document.createElement('tr');
                     
                     const tdTime = document.createElement('td');
-                    tdTime.className = 'time-col';
+                    tdTime.className = 'time-col day-group-end';
                     const timeInput = document.createElement('input');
                     timeInput.type = 'text';
                     timeInput.className = 'time-input';
@@ -831,7 +834,6 @@
             } catch (error) {
                 console.warn('Nätverksfel eller lokal öppning, ritar tomt/lokalt schema:', error);
             } finally {
-                // Ritar alltid ut schemat oavsett om nätverket svarade eller inte
                 buildTable();
             }
         }
@@ -845,7 +847,6 @@
             }
         }
 
-        // Starta rendering direkt när DOM är laddad
         document.addEventListener('DOMContentLoaded', loadSchedule);
     </script>
 </body>
