@@ -434,7 +434,7 @@
     </p>
 
     <div class="toolbar">
-        <button class="btn" onclick="saveSchedule()">💾 Spara schema</button>
+        <button class="btn" id="btnSave" onclick="saveSchedule()">💾 Spara till molnet</button>
         <button class="btn btn-clear" onclick="clearAll()">🗑️ Töm alla rutor</button>
     </div>
 
@@ -484,6 +484,13 @@
     </div>
 
     <script>
+        /* ========================================================
+           🛠️ MOLNLAGRING (JSONBin.io) - FYLL I DINA UPPGIFTER HÄR:
+           ======================================================== */
+        const BIN_ID = 6a91c98af5f4af5e294eca71;
+        const API_KEY = $2a$10$UX4oAIFBKBUsF4SwhVXdMOV2B3n83/NNwFRw2mbvdxMk0a2XyHt46;
+        /* ======================================================== */
+
         const pitches = ["Plan 1", "Plan 2", "Plan 3", "Plan 4", "Plan 5"];
         const daysCount = 5;
 
@@ -775,33 +782,80 @@
             buildTable();
         }
 
-        /* --- STORAGE LOGIC --- */
-        function saveSchedule() {
+        /* --- API / JSONBin.io MOLNLAGRING --- */
+        async function saveSchedule() {
+            if (BIN_ID === 'DIN_BIN_ID_HÄR' || API_KEY === 'DIN_API_KEY_HÄR') {
+                alert('⚠️ Du måste fylla i ditt BIN_ID och API_KEY i skriptet först!');
+                return;
+            }
+
+            const btn = document.getElementById('btnSave');
+            btn.textContent = '⏳ Sparar...';
+            btn.disabled = true;
+
             const data = {
                 scheduleData: scheduleData,
                 customTimes: customTimes,
                 pitchSlotCounts: pitchSlotCounts
             };
-            localStorage.setItem('football_schedule_custom_times_data', JSON.stringify(data));
-            alert('Schemat och tiderna har sparats!');
-        }
 
-        function loadSchedule() {
-            const saved = localStorage.getItem('football_schedule_custom_times_data');
-            if (saved) {
-                const data = JSON.parse(saved);
-                if (data.scheduleData) scheduleData = data.scheduleData;
-                if (data.customTimes) customTimes = data.customTimes;
-                if (data.pitchSlotCounts) pitchSlotCounts = data.pitchSlotCounts;
+            try {
+                const response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': API_KEY
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    alert('💾 Schemat har sparats i molnet!');
+                } else {
+                    alert('⚠️ Kunde inte spara. Kontrollera dina API-uppgifter.');
+                }
+            } catch (error) {
+                console.error('Fel vid sparning:', error);
+                alert('⚠️ Kommunikationsfel vid sparning.');
+            } finally {
+                btn.textContent = '💾 Spara till molnet';
+                btn.disabled = false;
             }
-            buildTable();
         }
 
-        function clearAll() {
-            if (confirm('Vill du tömma alla rutor i schemat?')) {
+        async function loadSchedule() {
+            if (BIN_ID === 'DIN_BIN_ID_HÄR' || API_KEY === 'DIN_API_KEY_HÄR') {
+                buildTable();
+                return;
+            }
+
+            try {
+                const response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
+                    headers: {
+                        'X-Master-Key': API_KEY
+                    }
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    const data = result.record || {};
+
+                    if (data.scheduleData) scheduleData = data.scheduleData;
+                    if (data.customTimes) customTimes = data.customTimes;
+                    if (data.pitchSlotCounts) pitchSlotCounts = data.pitchSlotCounts;
+                }
+            } catch (error) {
+                console.error('Kunde inte hämta schemat:', error);
+            } finally {
+                buildTable();
+            }
+        }
+
+        async function clearAll() {
+            if (confirm('Vill du tömma hela schemat i molnet?')) {
                 scheduleData = {};
                 customTimes = {};
-                localStorage.removeItem('football_schedule_custom_times_data');
+                await saveSchedule();
                 buildTable();
             }
         }
