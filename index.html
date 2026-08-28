@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fotbollsklubb - Schema</title>
+    <style>
+        :root {
+            --bg-color: #f4f6f9;
+            --table-border: #cbd5e1;
+            --header-bg: #1e293b;
+            --header-text: #ffffff;
+            
+            --pitch-bg: #334155;
+            --pitch-text: #ffffff;
+            
+            --box-bg: #ffffff;
+            --drag-over: #abebc6;
+
+            /* Blå färgstil */
+            --blue-bg: #dbeafe;
+            --blue-border: #3b82f6;
+            --blue-text: #1e40af;
+
+            /* Gul färgstil */
+            --yellow-bg: #fef9c3;
+            --yellow-border: #eab308;
+            --yellow-text: #854d0e;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            padding: 20px;
+            margin: 0;
+        }
+
+        h1 {
+            color: #0f172a;
+            font-size: 22px;
+            margin-bottom: 5px;
+        }
+
+        p.info {
+            color: #475569;
+            font-size: 14px;
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+
+        .toolbar {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            padding: 9px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .btn:hover { background-color: #1d4ed8; }
+
+        .btn-clear { background-color: #ef4444; }
+        .btn-clear:hover { background-color: #dc2626; }
+
+        .table-container {
+            overflow-x: auto;
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        table {
+            border-collapse: separate;
+            border-spacing: 0;
+            width: 100%;
+            min-width: 980px;
+        }
+
+        th, td {
+            border-top: 1px solid var(--table-border);
+            border-bottom: 1px solid var(--table-border);
+            border-right: 1px solid var(--table-border);
+            text-align: center;
+            font-size: 13px;
+        }
+
+        th:first-child, td:first-child {
+            border-left: 1px solid var(--table-border);
+        }
+
+        .day-group-end {
+            border-right: 8px solid var(--bg-color) !important;
+        }
+
+        th.day-header {
+            background-color: var(--header-bg);
+            color: var(--header-text);
+            padding: 10px;
+            font-size: 14px;
+            width: 18%;
+        }
+
+        tr.pitch-header td {
+            background-color: var(--pitch-bg);
+            color: var(--pitch-text);
+            padding: 8px 14px;
+            font-size: 15px;
+            border-top: 14px solid var(--bg-color) !important;
+        }
+
+        .pitch-header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-pitch-slot {
+            background: rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+
+        .btn-pitch-slot:hover {
+            background: rgba(255, 255, 255, 0.25);
+            border-color: #ffffff;
+        }
+
+        td.time-col {
+            background-color: #f1f5f9;
+            font-weight: bold;
+            width: 130px;
+            color: #334155;
+            padding: 3px 6px;
+        }
+
+        .time-input {
+            width: 100%;
+            border: 1px solid transparent;
+            background: transparent;
+            text-align: center;
+            font-weight: 700;
+            color: #334155;
+            font-size: 13px;
+            padding: 6px 2px;
+            border-radius: 4px;
+            outline: none;
+        }
+
+        .time-input:hover {
+            background-color: #e2e8f0;
+            border-color: #cbd5e1;
+        }
+
+        .time-input:focus {
+            background-color: #ffffff;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+        }
+
+        .slot {
+            height: 48px;
+            padding: 3px;
+            vertical-align: middle;
+            background-color: #fafafa;
+        }
+
+        .team-slot-wrapper {
+            position: relative;
+            display: flex;
+            gap: 4px;
+            width: 100%;
+            height: 100%;
+            min-height: 40px;
+            align-items: center;
+        }
+
+        .team-box {
+            flex: 1;
+            height: 100%;
+            min-height: 38px;
+            background-color: var(--box-bg);
+            border: 1px dashed #cbd5e1;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #1e293b;
+            cursor: pointer;
+            user-select: none;
+            font-size: 13px;
+            transition: transform 0.1s, box-shadow 0.15s, background-color 0.2s;
+        }
+
+        .team-box.has-content {
+            border-style: solid;
+            cursor: grab;
+        }
+
+        .team-box.has-content:active {
+            cursor: grabbing;
+        }
+
+        .team-box * {
+            pointer-events: none;
+        }
+
+        .team-box.drag-over {
+            background-color: var(--drag-over) !important;
+            border: 2px dashed #27ae60 !important;
+        }
+
+        .add-third-zone {
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 12px;
+            height: 100%;
+            background: transparent;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            z-index: 10;
+        }
+
+        .add-third-zone.drag-over {
+            background-color: var(--drag-over) !important;
+            border: 2px dashed #27ae60 !important;
+            width: 24px;
+        }
+
+        .team-box.color-blue {
+            background-color: var(--blue-bg) !important;
+            border-color: var(--blue-border) !important;
+            color: var(--blue-text) !important;
+        }
+
+        .team-box.color-yellow {
+            background-color: var(--yellow-bg) !important;
+            border-color: var(--yellow-border) !important;
+            color: var(--yellow-text) !important;
+        }
+
+        .team-box:hover {
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            border-color: #0284c7;
+        }
+
+        .team-box.dragging {
+            opacity: 0.3;
+        }
+
+        /* Modal / Popup Styling */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.45);
+            backdrop-filter: blur(2px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-card {
+            background: #ffffff;
+            border-radius: 12px;
+            width: 300px;
+            padding: 20px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            transform: scale(0.95);
+            transition: transform 0.2s ease;
+        }
+
+        .modal-overlay.active .modal-card {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 18px;
+            color: #64748b;
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+        }
+
+        .modal-close:hover { color: #0f172a; }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .modal-card input[type="text"] {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .modal-card input[type="text"]:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+        }
+
+        .color-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .color-option-btn {
+            height: 40px;
+            border-radius: 6px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .color-option-btn.yellow {
+            background-color: var(--yellow-bg);
+            border-color: #eab308;
+        }
+
+        .color-option-btn.blue {
+            background-color: var(--blue-bg);
+            border-color: #3b82f6;
+        }
+
+        .color-option-btn.selected {
+            transform: scale(1.03);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.15);
+            outline: 2px solid #2563eb;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 20px;
+        }
+
+        .modal-actions button {
+            flex: 1;
+            padding: 10px;
+            border-radius: 6px;
+            border: none;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .btn-save-modal {
+            background-color: #2563eb;
+            color: white;
+        }
+
+        .btn-save-modal:hover { background-color: #1d4ed8; }
+
+        .btn-delete-modal {
+            background-color: #f1f5f9;
+            color: #ef4444;
+        }
+
+        .btn-delete-modal:hover { background-color: #fee2e2; }
+    </style>
+</head>
+<body>
+
+    <h1>⚽ Schemaläggning - Fotbollsplaner</h1>
+    <p class="info">
+        ✨ <strong>Klicka på en ruta</strong> för att fylla i lag.<br>
+        🔄 <strong>Byta plats:</strong> Släpp ett lag direkt på en annan box för att byta/flytta plats.<br>
+        ➕ <strong>Skapa 3-delning:</strong> Dra ett lag till den osynliga zonen längst till höger.
+    </p>
+
+    <div class="toolbar">
+        <button class="btn" onclick="saveSchedule()">💾 Spara schema</button>
+        <button class="btn btn-clear" onclick="clearAll()">🗑️ Töm alla rutor</button>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th class="day-header" style="width:130px;">Plan / Tid</th>
+                    <th class="day-header day-group-end">Måndag</th>
+                    <th class="day-header day-group-end">Tisdag</th>
+                    <th class="day-header day-group-end">Onsdag</th>
+                    <th class="day-header day-group-end">Torsdag</th>
+                    <th class="day-header day-group-end">Fredag</th>
+                </tr>
+            </thead>
+            <tbody id="schedule-body">
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Popup Modal -->
+    <div class="modal-overlay" id="editModal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <span id="modalTitle">Redigera ruta</span>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="teamInput">Lagnamn / Beteckning</label>
+                <input type="text" id="teamInput" placeholder="t.ex. P-19, F-15..." autocomplete="off">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Välj färg</label>
+                <div class="color-options">
+                    <button type="button" class="color-option-btn yellow selected" id="btnColorYellow" onclick="selectModalColor('yellow')" title="Gul"></button>
+                    <button type="button" class="color-option-btn blue" id="btnColorBlue" onclick="selectModalColor('blue')" title="Blå"></button>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-delete-modal" onclick="deleteModalContent()">Töm ruta</button>
+                <button type="button" class="btn-save-modal" onclick="saveModalContent()">Spara</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const pitches = ["Plan 1", "Plan 2", "Plan 3", "Plan 4", "Plan 5"];
+        const daysCount = 5;
+
+        const timePresets = {
+            2: ["17:30-19:00", "19:00-20:30"],
+            3: ["17:30-18:45", "18:45-20:00", "20:00-21:30"]
+        };
+
+        let pitchSlotCounts = { 0: 2, 1: 2, 2: 2, 3: 2, 4: 2 };
+
+        let scheduleData = {};
+        let customTimes = {};
+
+        const tbody = document.getElementById('schedule-body');
+        let currentEditingBoxId = null;
+        let selectedColor = 'yellow';
+
+        function togglePitchSlots(pIdx) {
+            pitchSlotCounts[pIdx] = pitchSlotCounts[pIdx] === 2 ? 3 : 2;
+            buildTable();
+        }
+
+        function cleanup3SlotState() {
+            pitches.forEach((_, pIdx) => {
+                for (let tIdx = 0; tIdx < 3; tIdx++) {
+                    for (let d = 0; d < daysCount; d++) {
+                        if (scheduleData[`box_${pIdx}_${tIdx}_${d}_2`] !== undefined) {
+                            
+                            let activeTeams = [];
+                            for (let h = 0; h < 3; h++) {
+                                const bKey = `box_${pIdx}_${tIdx}_${d}_${h}`;
+                                const bData = scheduleData[bKey];
+                                if (bData && bData.text && bData.text.trim() !== '') {
+                                    activeTeams.push(bData);
+                                }
+                            }
+
+                            if (activeTeams.length <= 2) {
+                                delete scheduleData[`box_${pIdx}_${tIdx}_${d}_0`];
+                                delete scheduleData[`box_${pIdx}_${tIdx}_${d}_1`];
+                                delete scheduleData[`box_${pIdx}_${tIdx}_${d}_2`];
+
+                                activeTeams.forEach((teamData, idx) => {
+                                    scheduleData[`box_${pIdx}_${tIdx}_${d}_${idx}`] = teamData;
+                                });
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function buildTable() {
+            cleanup3SlotState();
+            tbody.innerHTML = '';
+
+            pitches.forEach((pitch, pIdx) => {
+                const slotCount = pitchSlotCounts[pIdx] || 2;
+                const timesForPitch = timePresets[slotCount];
+
+                const pRow = document.createElement('tr');
+                pRow.className = 'pitch-header';
+                pRow.innerHTML = `
+                    <td colspan="${1 + daysCount}">
+                        <div class="pitch-header-content">
+                            <span>${pitch}</span>
+                            <button class="btn-pitch-slot" onclick="togglePitchSlots(${pIdx})">
+                                ${slotCount === 2 ? '➕ Lägg till tidsslot (3 st)' : '➖ Minska tidsslots (2 st)'}
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(pRow);
+
+                timesForPitch.forEach((defaultTime, tIdx) => {
+                    const tr = document.createElement('tr');
+                    
+                    const tdTime = document.createElement('td');
+                    tdTime.className = 'time-col';
+                    const timeInput = document.createElement('input');
+                    timeInput.type = 'text';
+                    timeInput.className = 'time-input';
+                    timeInput.id = `time_input_${pIdx}_${tIdx}`;
+                    timeInput.value = customTimes[timeInput.id] || defaultTime;
+                    timeInput.addEventListener('change', (e) => {
+                        customTimes[e.target.id] = e.target.value;
+                    });
+                    tdTime.appendChild(timeInput);
+                    tr.appendChild(tdTime);
+
+                    for (let d = 0; d < daysCount; d++) {
+                        const td = document.createElement('td');
+                        td.className = 'slot day-group-end';
+                        
+                        const wrapperId = `wrapper_${pIdx}_${tIdx}_${d}`;
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'team-slot-wrapper';
+                        wrapper.id = wrapperId;
+
+                        let subBoxCount = 2;
+                        const box3Id = `box_${pIdx}_${tIdx}_${d}_2`;
+
+                        if (scheduleData[box3Id] !== undefined) {
+                            subBoxCount = 3;
+                        }
+
+                        for (let h = 0; h < subBoxCount; h++) {
+                            const boxId = `box_${pIdx}_${tIdx}_${d}_${h}`;
+                            const boxData = scheduleData[boxId] || { text: '', color: 'yellow' };
+                            const box = createTeamBox(boxId, boxData.text, boxData.color);
+                            wrapper.appendChild(box);
+                        }
+
+                        if (subBoxCount === 2) {
+                            const addZone = document.createElement('div');
+                            addZone.className = 'add-third-zone';
+
+                            addZone.addEventListener('dragover', (e) => {
+                                e.preventDefault();
+                                addZone.classList.add('drag-over');
+                            });
+                            addZone.addEventListener('dragleave', () => {
+                                addZone.classList.remove('drag-over');
+                            });
+                            addZone.addEventListener('drop', (e) => {
+                                e.preventDefault();
+                                addZone.classList.remove('drag-over');
+                                if (!draggedSourceId) return;
+
+                                const sourceData = scheduleData[draggedSourceId] || { text: '', color: 'yellow' };
+                                if (!sourceData.text) return;
+
+                                const targetBox3Key = `box_${pIdx}_${tIdx}_${d}_2`;
+                                scheduleData[targetBox3Key] = { text: sourceData.text, color: sourceData.color };
+                                scheduleData[draggedSourceId] = { text: '', color: 'yellow' };
+                                buildTable();
+                            });
+
+                            wrapper.appendChild(addZone);
+                        }
+
+                        td.appendChild(wrapper);
+                        tr.appendChild(td);
+                    }
+                    tbody.appendChild(tr);
+                });
+            });
+        }
+
+        function createTeamBox(id, text, color) {
+            const box = document.createElement('div');
+            box.className = 'team-box';
+            box.id = id;
+            box.dataset.color = color || 'yellow';
+
+            const hasText = text && text.trim() !== '';
+            
+            box.draggable = hasText;
+            box.innerHTML = `<span>${text}</span>`;
+
+            if (hasText) {
+                box.classList.add('has-content');
+                box.classList.add(box.dataset.color === 'blue' ? 'color-blue' : 'color-yellow');
+                box.addEventListener('dragstart', handleDragStart);
+                box.addEventListener('dragend', handleDragEnd);
+            }
+
+            box.addEventListener('click', () => openModal(box));
+
+            box.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                box.classList.add('drag-over');
+            });
+
+            box.addEventListener('dragleave', () => {
+                box.classList.remove('drag-over');
+            });
+
+            box.addEventListener('drop', handleBoxDrop);
+
+            return box;
+        }
+
+        /* --- POPUP / MODAL HANDLERS --- */
+        function openModal(box) {
+            currentEditingBoxId = box.id;
+            const textSpan = box.querySelector('span');
+            const text = textSpan ? textSpan.textContent.trim() : '';
+            const color = (text && box.dataset.color) ? box.dataset.color : 'yellow';
+
+            document.getElementById('teamInput').value = text;
+            selectModalColor(color);
+
+            const modal = document.getElementById('editModal');
+            modal.classList.add('active');
+
+            setTimeout(() => {
+                const input = document.getElementById('teamInput');
+                input.focus();
+                input.select();
+            }, 50);
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('editModal');
+            modal.classList.remove('active');
+            currentEditingBoxId = null;
+        }
+
+        function selectModalColor(color) {
+            selectedColor = color;
+            const btnYellow = document.getElementById('btnColorYellow');
+            const btnBlue = document.getElementById('btnColorBlue');
+
+            if (color === 'yellow') {
+                btnYellow.classList.add('selected');
+                btnBlue.classList.remove('selected');
+            } else {
+                btnBlue.classList.add('selected');
+                btnYellow.classList.remove('selected');
+            }
+        }
+
+        function saveModalContent() {
+            if (!currentEditingBoxId) return;
+
+            const inputVal = document.getElementById('teamInput').value.trim().toUpperCase();
+            scheduleData[currentEditingBoxId] = {
+                text: inputVal,
+                color: selectedColor
+            };
+
+            closeModal();
+            buildTable();
+        }
+
+        function deleteModalContent() {
+            if (!currentEditingBoxId) return;
+            scheduleData[currentEditingBoxId] = { text: '', color: 'yellow' };
+
+            closeModal();
+            buildTable();
+        }
+
+        document.getElementById('editModal').addEventListener('click', (e) => {
+            if (e.target.id === 'editModal') {
+                closeModal();
+            }
+        });
+
+        document.getElementById('teamInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                saveModalContent();
+            } else if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+
+        /* --- DRAG & DROP LOGIC --- */
+        let draggedSourceId = null;
+
+        function handleDragStart(e) {
+            draggedSourceId = this.id;
+            this.classList.add('dragging');
+            e.dataTransfer.setData('text/plain', this.id);
+            e.dataTransfer.effectAllowed = 'move';
+        }
+
+        function handleDragEnd() {
+            this.classList.remove('dragging');
+            draggedSourceId = null;
+        }
+
+        function handleBoxDrop(e) {
+            e.preventDefault();
+            this.classList.remove('drag-over');
+
+            if (!draggedSourceId) return;
+
+            const targetId = this.id;
+            if (targetId === draggedSourceId) return;
+
+            const sourceData = scheduleData[draggedSourceId] || { text: '', color: 'yellow' };
+            const targetData = scheduleData[targetId] || { text: '', color: 'yellow' };
+
+            scheduleData[targetId] = { text: sourceData.text, color: sourceData.color };
+            scheduleData[draggedSourceId] = { text: targetData.text, color: targetData.color };
+
+            buildTable();
+        }
+
+        /* --- STORAGE LOGIC --- */
+        function saveSchedule() {
+            const data = {
+                scheduleData: scheduleData,
+                customTimes: customTimes,
+                pitchSlotCounts: pitchSlotCounts
+            };
+            localStorage.setItem('football_schedule_custom_times_data', JSON.stringify(data));
+            alert('Schemat och tiderna har sparats!');
+        }
+
+        function loadSchedule() {
+            const saved = localStorage.getItem('football_schedule_custom_times_data');
+            if (saved) {
+                const data = JSON.parse(saved);
+                if (data.scheduleData) scheduleData = data.scheduleData;
+                if (data.customTimes) customTimes = data.customTimes;
+                if (data.pitchSlotCounts) pitchSlotCounts = data.pitchSlotCounts;
+            }
+            buildTable();
+        }
+
+        function clearAll() {
+            if (confirm('Vill du tömma alla rutor i schemat?')) {
+                scheduleData = {};
+                customTimes = {};
+                localStorage.removeItem('football_schedule_custom_times_data');
+                buildTable();
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', loadSchedule);
+    </script>
+</body>
+</html>
