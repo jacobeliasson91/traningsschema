@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fotbollsklubb - Schema</title>
 <style>
-:root{--bg-color:#f4f6f9;--table-border:#cbd5e1;--header-bg:#1e293b;--header-text:#fff;--pitch-bg:#334155;--pitch-text:#fff;--box-bg:#fff;--drag-over:#abebc6;--blue-bg:#dbeafe;--blue-border:#3b82f6;--blue-text:#1e40af;--yellow-bg:#f9e6b3;--yellow-border:#eab308;--yellow-text:#854d0e}
+:root{--bg-color:#f4f6f9;--table-border:#cbd5e1;--header-bg:#1e293b;--header-text:#fff;--pitch-bg:#334155;--pitch-text:#fff;--box-bg:#fff;--drag-over:#abebc6;--blue-bg:#dbeafe;--blue-border:#3b82f6;--blue-text:#1e40af;--yellow-bg:#feeebd;--yellow-border:#eab308;--yellow-text:#854d0e}
 *{box-sizing:border-box;font-family:'Segoe UI',Arial,sans-serif}
 body{background:var(--bg-color);padding:20px;margin:0}
 h1{color:#0f172a;font-size:22px;margin-bottom:5px}
@@ -120,17 +120,21 @@ const API_KEY = '$2a$10$UX4oAIFBKBUsF4SwhVXdMOV2B3n83/NNwFRw2mbvdxMk0a2XyHt46';
 
 const pitches = ["Plan 1","Plan 2","Plan 3","Plan 4","Plan 5"];
 const daysCount = 5;
-const timePresets = {
-    2: ["17:30-19:00", "19:00-20:30"],
-    3: ["17:30-19:00", "19:00-20:30", "20:30-22:00"]
-};
+// Låsta standardtider per rad (påverkas aldrig av antal tidsslots)
+const ROW_TIMES = ["17:30-19:00", "19:00-20:30", "20:30-22:00"];
+// Gamla standardtider från tidigare versioner – behandlas som "ingen egen tid"
+const LEGACY_TIMES = ["17:30-18:45", "18:45-20:00", "20:00-21:30"];
 const emptyBox = () => ({ text: '', color: 'yellow', time: '' });
 
-// Standardtid för en given plan + rad (baserat på antal pass på planen)
 function defaultTime(boxId) {
-    const [, pIdx, tIdx] = boxId.split('_').map(Number);
-    const presets = timePresets[pitchSlotCounts[pIdx] || 2];
-    return presets[tIdx] || '';
+    const tIdx = Number(boxId.split('_')[2]);
+    return ROW_TIMES[tIdx] || '';
+}
+
+// Ger tiden som ska visas: egen tid om den finns, annars radens låsta standardtid
+function effectiveTime(boxId, data) {
+    const t = data && data.time;
+    return (t && !LEGACY_TIMES.includes(t)) ? t : defaultTime(boxId);
 }
 
 let pitchSlotCounts = { 0: 2, 1: 2, 2: 2, 3: 2, 4: 2 };
@@ -242,7 +246,7 @@ function escapeHtml(s) {
 function createTeamBox(id, data) {
     const text = data.text || '';
     const color = data.color || 'yellow';
-    const time = data.time || defaultTime(id);
+    const time = effectiveTime(id, data);
 
     const box = document.createElement('div');
     box.className = 'team-box';
@@ -273,7 +277,7 @@ function openModal(box) {
     document.getElementById('teamInput').value = data.text || '';
     const isEmpty = !(data.text && data.text.trim());
     document.getElementById('timeGroup').style.display = isEmpty ? 'none' : '';
-    document.getElementById('timeInput').value = isEmpty ? '' : (data.time || defaultTime(box.id));
+    document.getElementById('timeInput').value = isEmpty ? '' : effectiveTime(box.id, data);
     selectModalColor(data.text ? (data.color || 'yellow') : 'yellow');
     document.getElementById('editModal').classList.add('active');
     setTimeout(() => {
