@@ -13,6 +13,8 @@ p.info{color:#475569;font-size:14px;margin-bottom:15px;line-height:1.5}
 .toolbar{margin-bottom:15px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .btn{background:#2563eb;color:#fff;border:none;padding:9px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;transition:background .2s}
 .btn:hover{background:#1d4ed8}
+.save-status{font-size:13px;font-weight:600;color:#475569}
+.save-status.error{color:#dc2626}
 .table-container{overflow-x:auto}
 table{border-collapse:separate;border-spacing:0;width:100%;min-width:1050px}
 th,td{border-top:1px solid var(--table-border);border-bottom:1px solid var(--table-border);border-right:1px solid var(--table-border);text-align:left;font-size:13px}
@@ -69,7 +71,7 @@ td.time-col{background:#e2e8f0;font-weight:bold;width:130px;color:#334155;paddin
 ➕ <strong>Skapa 3-delning:</strong> Dra ett lag till den osynliga zonen längst till höger.
 </p>
 <div class="toolbar">
-<button class="btn" id="btnSave" onclick="saveSchedule()">💾 Spara till molnet</button>
+<span id="saveStatus" class="save-status">☁️ Sparas automatiskt</span>
 </div>
 <div class="table-container">
 <table>
@@ -140,6 +142,7 @@ let draggedSourceId = null;
 function togglePitchSlots(pIdx) {
     pitchSlotCounts[pIdx] = pitchSlotCounts[pIdx] === 2 ? 3 : 2;
     buildTable();
+    scheduleSave();
 }
 
 function cleanup3SlotState() {
@@ -217,6 +220,7 @@ function buildTable() {
                         scheduleData[`box_${pIdx}_${tIdx}_${d}_2`] = { ...src };
                         scheduleData[draggedSourceId] = emptyBox();
                         buildTable();
+                        scheduleSave();
                     });
                     wrapper.appendChild(addZone);
                 }
@@ -300,6 +304,7 @@ function saveModalContent() {
         : emptyBox();
     closeModal();
     buildTable();
+    scheduleSave();
 }
 
 function deleteModalContent() {
@@ -307,6 +312,7 @@ function deleteModalContent() {
     scheduleData[currentEditingBoxId] = emptyBox();
     closeModal();
     buildTable();
+    scheduleSave();
 }
 
 document.getElementById('editModal').addEventListener('click', e => {
@@ -345,29 +351,56 @@ function handleBoxDrop(e) {
     scheduleData[targetId] = { ...src };
     scheduleData[draggedSourceId] = { ...tgt };
     buildTable();
+    scheduleSave();
 }
 
-/* --- JSONBin.io MOLNLAGRING --- */
-async function saveSchedule() {
-    const btn = document.getElementById('btnSave');
-    btn.textContent = '⏳ Sparar...';
-    btn.disabled = true;
-    const data = { scheduleData, pitchSlotCounts };
+/* --- JSONBin.io MOLNLAGRING (automatisk sparning) --- */
+let saveTimer = null;
+let saving = false;
+let pendingSave = false;
+
+function setStatus(text, isError) {
+    const el = document.getElementById('saveStatus');
+    el.textContent = text;
+    el.classList.toggle('error', !!isError);
+}
+
+function scheduleSave() {
+    setStatus('⏳ Sparar...');
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveSchedule, 800);
+}
+
+async function saveSchedule(keepalive = false) {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+    if (saving) { pendingSave = true; return; }
+    saving = true;
+    pendingSave = false;
     try {
         const response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json', 'X-Master-Key': API_KEY },
-            body: JSON.stringify(data)
+            body: JSON.stringify({ scheduleData, pitchSlotCounts }),
+            keepalive: keepalive === true
         });
-        alert(response.ok ? '💾 Schemat har sparats i molnet!' : '⚠️ Kunde inte spara. Kontrollera dina API-uppgifter.');
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        if (!pendingSave) setStatus('✅ Sparat i molnet');
     } catch (error) {
         console.error('Fel vid sparning:', error);
-        alert('⚠️ Kommunikationsfel vid sparning.');
+        setStatus('⚠️ Kunde inte spara – försöker igen...', true);
+        pendingSave = false;
+        saveTimer = setTimeout(saveSchedule, 5000);
     } finally {
-        btn.textContent = '💾 Spara till molnet';
-        btn.disabled = false;
+        saving = false;
+        if (pendingSave) saveSchedule();
     }
 }
+
+// Spara direkt om fliken stängs/döljs medan en sparning väntar
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && saveTimer) saveSchedule(true);
+});
 
 async function loadSchedule() {
     try {
