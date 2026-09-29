@@ -423,119 +423,61 @@ async function loadSchedule() {
 }
 
 /* --- EXPORT (JPG / PDF) --- */
-const EXPORT_FONT = "'Segoe UI', Arial, sans-serif";
-const EXPORT_DAYS = ["Måndag", "Tisdag", "Onsdag", "Torsdag", "Fredag"];
+const EXPORT_PROPS = [
+ 'display','position','top','left','right','bottom','width','height','min-width','min-height','max-width','max-height',
+ 'box-sizing','margin-top','margin-right','margin-bottom','margin-left','padding-top','padding-right','padding-bottom','padding-left',
+ 'border-top-width','border-top-style','border-top-color','border-right-width','border-right-style','border-right-color',
+ 'border-bottom-width','border-bottom-style','border-bottom-color','border-left-width','border-left-style','border-left-color',
+ 'border-top-left-radius','border-top-right-radius','border-bottom-right-radius','border-bottom-left-radius',
+ 'border-collapse','border-spacing','table-layout','background-color','color','opacity','box-shadow','visibility','overflow','z-index',
+ 'font-family','font-size','font-weight','font-style','line-height','letter-spacing','text-align','text-transform','text-decoration-line',
+ 'white-space','vertical-align','flex-direction','flex-wrap','flex-grow','flex-shrink','flex-basis','align-items','justify-content','gap'
+];
 
-function fitFont(ctx, text, weight, size, maxW) {
-    while (size > 6) {
-        ctx.font = `${weight} ${size}px ${EXPORT_FONT}`;
-        if (ctx.measureText(text).width <= maxW) break;
-        size -= 0.5;
-    }
-    ctx.font = `${weight} ${size}px ${EXPORT_FONT}`;
+// Kopierar webbläsarens egen beräknade stil, så att exporten blir identisk med sidan
+function inlineStyles(src, dst) {
+    const cs = getComputedStyle(src);
+    let css = '';
+    for (const p of EXPORT_PROPS) css += `${p}:${cs.getPropertyValue(p)};`;
+    dst.setAttribute('style', css);
+    for (let i = 0; i < src.children.length; i++) inlineStyles(src.children[i], dst.children[i]);
 }
 
-function rrect(ctx, x, y, w, h, r) {
-    ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h);
-}
+async function renderScheduleCanvas(targetWidth) {
+    const table = document.querySelector('table');
+    const rect = table.getBoundingClientRect();
+    const PAD = 20; // samma marginal som sidans body
+    const tw = Math.ceil(rect.width), th = Math.ceil(rect.height);
+    const W = tw + 2 * PAD, H = th + 2 * PAD;
 
-function renderScheduleCanvas(targetWidth) {
-    const W = 1000, M = 24, GAP = 12, DAYH = 34, PH = 30, PGAP = 10, ROWH = 44;
-    const colW = (W - 2 * M - (daysCount - 1) * GAP) / daysCount;
+    const clone = table.cloneNode(true);
+    inlineStyles(table, clone);
+    clone.querySelectorAll('.btn-pitch-slot').forEach(b => { b.style.visibility = 'hidden'; });
+    clone.style.width = tw + 'px';
+    clone.style.minWidth = tw + 'px';
 
-    let H = M + DAYH + M;
-    pitches.forEach((_, p) => { H += PGAP + PH + (pitchSlotCounts[p] || 2) * ROWH; });
+    const wrap = document.createElement('div');
+    wrap.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+    wrap.setAttribute('style', `width:${W}px;height:${H}px;padding:${PAD}px;box-sizing:border-box;background:#f4f6f9;`);
+    wrap.appendChild(clone);
 
-    const scale = targetWidth / W;
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.round(W * scale);
-    canvas.height = Math.round(H * scale);
-    const ctx = canvas.getContext('2d');
-    ctx.scale(canvas.width / W, canvas.height / H);
-    ctx.textBaseline = 'middle';
-    ctx.textAlign = 'left';
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">` +
+        `<foreignObject x="0" y="0" width="${W}" height="${H}">${new XMLSerializer().serializeToString(wrap)}</foreignObject></svg>`;
 
-    ctx.fillStyle = '#f4f6f9';
-    ctx.fillRect(0, 0, W, H);
-
-    // Dagrubriker
-    for (let d = 0; d < daysCount; d++) {
-        const x = M + d * (colW + GAP);
-        ctx.fillStyle = '#1e293b';
-        ctx.fillRect(x, M, colW, DAYH);
-        ctx.fillStyle = '#ffffff';
-        ctx.font = `700 14px ${EXPORT_FONT}`;
-        ctx.fillText(EXPORT_DAYS[d], x + 10, M + DAYH / 2);
-    }
-
-    let y = M + DAYH;
-    pitches.forEach((pitch, pIdx) => {
-        const slotCount = pitchSlotCounts[pIdx] || 2;
-        y += PGAP;
-
-        ctx.fillStyle = '#334155';
-        ctx.fillRect(M, y, W - 2 * M, PH);
-        ctx.fillStyle = '#ffffff';
-        ctx.font = `700 15px ${EXPORT_FONT}`;
-        ctx.fillText(pitch, M + 14, y + PH / 2);
-        y += PH;
-
-        for (let t = 0; t < slotCount; t++) {
-            for (let d = 0; d < daysCount; d++) {
-                const cx = M + d * (colW + GAP);
-
-                ctx.strokeStyle = '#cbd5e1';
-                ctx.lineWidth = 1;
-                ctx.setLineDash([]);
-                ctx.strokeRect(cx + 0.5, y + 0.5, colW - 1, ROWH - 1);
-
-                const subCount = scheduleData[`box_${pIdx}_${t}_${d}_2`] !== undefined ? 3 : 2;
-                const pad = 4, bGap = 4;
-                const bw = (colW - 2 * pad - (subCount - 1) * bGap) / subCount;
-                const bh = ROWH - 2 * pad;
-
-                for (let h = 0; h < subCount; h++) {
-                    const id = `box_${pIdx}_${t}_${d}_${h}`;
-                    const data = scheduleData[id] || emptyBox();
-                    const bx = cx + pad + h * (bw + bGap);
-                    const by = y + pad;
-                    const hasText = data.text && data.text.trim() !== '';
-
-                    if (!hasText) {
-                        rrect(ctx, bx + 0.5, by + 0.5, bw - 1, bh - 1, 4);
-                        ctx.fillStyle = '#ffffff';
-                        ctx.fill();
-                        ctx.strokeStyle = '#cbd5e1';
-                        ctx.setLineDash([3, 2]);
-                        ctx.stroke();
-                        ctx.setLineDash([]);
-                        continue;
-                    }
-
-                    rrect(ctx, bx + 0.5, by + 0.5, bw - 1, bh - 1, 4);
-                    ctx.fillStyle = data.color === 'blue' ? '#dbeafe' : '#fef9c3';
-                    ctx.fill();
-                    ctx.strokeStyle = '#1e293b';
-                    ctx.stroke();
-
-                    const time = data.time || defaultTime(id);
-                    const tx = bx + 8, maxW = bw - 12;
-                    ctx.fillStyle = '#1e293b';
-                    if (time) {
-                        fitFont(ctx, data.text, 700, 12, maxW);
-                        ctx.fillText(data.text, tx, by + bh / 2 - 7);
-                        fitFont(ctx, time, 600, 11, maxW);
-                        ctx.fillText(time, tx, by + bh / 2 + 8);
-                    } else {
-                        fitFont(ctx, data.text, 700, 12, maxW);
-                        ctx.fillText(data.text, tx, by + bh / 2);
-                    }
-                }
-            }
-            y += ROWH;
-        }
+    const img = new Image();
+    await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = () => reject(new Error('Kunde inte rendera schemat'));
+        img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
     });
+
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(targetWidth);
+    canvas.height = Math.round(targetWidth * H / W);
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#f4f6f9';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     return canvas;
 }
 
@@ -558,7 +500,7 @@ function canvasToJpegBlob(canvas, quality) {
 
 async function exportJpg() {
     try {
-        const canvas = renderScheduleCanvas(2000);
+        const canvas = await renderScheduleCanvas(2000);
         downloadBlob(await canvasToJpegBlob(canvas, 0.92), 'schema.jpg');
     } catch (e) {
         console.error(e);
@@ -600,7 +542,7 @@ function buildPdf(jpegBytes, imgW, imgH) {
 
 async function exportPdf() {
     try {
-        const canvas = renderScheduleCanvas(3000);
+        const canvas = await renderScheduleCanvas(3000);
         const jpeg = new Uint8Array(await (await canvasToJpegBlob(canvas, 0.95)).arrayBuffer());
         downloadBlob(buildPdf(jpeg, canvas.width, canvas.height), 'schema.pdf');
     } catch (e) {
