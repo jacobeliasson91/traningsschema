@@ -71,6 +71,8 @@ td.time-col{background:#e2e8f0;font-weight:bold;width:130px;color:#334155;paddin
 ➕ <strong>Skapa 3-delning:</strong> Dra ett lag till den osynliga zonen längst till höger.
 </p>
 <div class="toolbar">
+<button class="btn" onclick="exportJpg()">🖼️ Exportera JPG</button>
+<button class="btn" onclick="exportPdf()">📄 Exportera PDF</button>
 <span id="saveStatus" class="save-status">☁️ Sparas automatiskt</span>
 </div>
 <div class="table-container">
@@ -417,6 +419,193 @@ async function loadSchedule() {
         console.warn('Nätverksfel eller lokal öppning, ritar tomt/lokalt schema:', error);
     } finally {
         buildTable();
+    }
+}
+
+/* --- EXPORT (JPG / PDF) --- */
+const EXPORT_FONT = "'Segoe UI', Arial, sans-serif";
+const EXPORT_DAYS = ["Måndag", "Tisdag", "Onsdag", "Torsdag", "Fredag"];
+
+function fitFont(ctx, text, weight, size, maxW) {
+    while (size > 6) {
+        ctx.font = `${weight} ${size}px ${EXPORT_FONT}`;
+        if (ctx.measureText(text).width <= maxW) break;
+        size -= 0.5;
+    }
+    ctx.font = `${weight} ${size}px ${EXPORT_FONT}`;
+}
+
+function rrect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h);
+}
+
+function renderScheduleCanvas(targetWidth) {
+    const W = 1000, M = 24, GAP = 12, DAYH = 34, PH = 30, PGAP = 10, ROWH = 44;
+    const colW = (W - 2 * M - (daysCount - 1) * GAP) / daysCount;
+
+    let H = M + DAYH + M;
+    pitches.forEach((_, p) => { H += PGAP + PH + (pitchSlotCounts[p] || 2) * ROWH; });
+
+    const scale = targetWidth / W;
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(W * scale);
+    canvas.height = Math.round(H * scale);
+    const ctx = canvas.getContext('2d');
+    ctx.scale(canvas.width / W, canvas.height / H);
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+
+    ctx.fillStyle = '#f4f6f9';
+    ctx.fillRect(0, 0, W, H);
+
+    // Dagrubriker
+    for (let d = 0; d < daysCount; d++) {
+        const x = M + d * (colW + GAP);
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(x, M, colW, DAYH);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `700 14px ${EXPORT_FONT}`;
+        ctx.fillText(EXPORT_DAYS[d], x + 10, M + DAYH / 2);
+    }
+
+    let y = M + DAYH;
+    pitches.forEach((pitch, pIdx) => {
+        const slotCount = pitchSlotCounts[pIdx] || 2;
+        y += PGAP;
+
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(M, y, W - 2 * M, PH);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `700 15px ${EXPORT_FONT}`;
+        ctx.fillText(pitch, M + 14, y + PH / 2);
+        y += PH;
+
+        for (let t = 0; t < slotCount; t++) {
+            for (let d = 0; d < daysCount; d++) {
+                const cx = M + d * (colW + GAP);
+
+                ctx.strokeStyle = '#cbd5e1';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([]);
+                ctx.strokeRect(cx + 0.5, y + 0.5, colW - 1, ROWH - 1);
+
+                const subCount = scheduleData[`box_${pIdx}_${t}_${d}_2`] !== undefined ? 3 : 2;
+                const pad = 4, bGap = 4;
+                const bw = (colW - 2 * pad - (subCount - 1) * bGap) / subCount;
+                const bh = ROWH - 2 * pad;
+
+                for (let h = 0; h < subCount; h++) {
+                    const id = `box_${pIdx}_${t}_${d}_${h}`;
+                    const data = scheduleData[id] || emptyBox();
+                    const bx = cx + pad + h * (bw + bGap);
+                    const by = y + pad;
+                    const hasText = data.text && data.text.trim() !== '';
+
+                    if (!hasText) {
+                        rrect(ctx, bx + 0.5, by + 0.5, bw - 1, bh - 1, 4);
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fill();
+                        ctx.strokeStyle = '#cbd5e1';
+                        ctx.setLineDash([3, 2]);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                        continue;
+                    }
+
+                    rrect(ctx, bx + 0.5, by + 0.5, bw - 1, bh - 1, 4);
+                    ctx.fillStyle = data.color === 'blue' ? '#dbeafe' : '#fef9c3';
+                    ctx.fill();
+                    ctx.strokeStyle = '#1e293b';
+                    ctx.stroke();
+
+                    const time = data.time || defaultTime(id);
+                    const tx = bx + 8, maxW = bw - 12;
+                    ctx.fillStyle = '#1e293b';
+                    if (time) {
+                        fitFont(ctx, data.text, 700, 12, maxW);
+                        ctx.fillText(data.text, tx, by + bh / 2 - 7);
+                        fitFont(ctx, time, 600, 11, maxW);
+                        ctx.fillText(time, tx, by + bh / 2 + 8);
+                    } else {
+                        fitFont(ctx, data.text, 700, 12, maxW);
+                        ctx.fillText(data.text, tx, by + bh / 2);
+                    }
+                }
+            }
+            y += ROWH;
+        }
+    });
+    return canvas;
+}
+
+function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+function canvasToJpegBlob(canvas, quality) {
+    return new Promise((resolve, reject) => {
+        canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob misslyckades')), 'image/jpeg', quality);
+    });
+}
+
+async function exportJpg() {
+    try {
+        const canvas = renderScheduleCanvas(2000);
+        downloadBlob(await canvasToJpegBlob(canvas, 0.92), 'schema.jpg');
+    } catch (e) {
+        console.error(e);
+        alert('⚠️ Kunde inte skapa JPG-filen.');
+    }
+}
+
+// Enkel PDF med en bild (A4 liggande), helt utan externa bibliotek
+function buildPdf(jpegBytes, imgW, imgH) {
+    const pw = 841.89, ph = 595.28, m = 20;
+    const k = Math.min((pw - 2 * m) / imgW, (ph - 2 * m) / imgH);
+    const w = imgW * k, h = imgH * k, x = (pw - w) / 2, y = (ph - h) / 2;
+
+    const enc = new TextEncoder();
+    const chunks = [];
+    const offsets = [];
+    let len = 0;
+    const push = b => { const u = typeof b === 'string' ? enc.encode(b) : b; chunks.push(u); len += u.length; };
+
+    const content = `q ${w.toFixed(2)} 0 0 ${h.toFixed(2)} ${x.toFixed(2)} ${y.toFixed(2)} cm /Im0 Do Q`;
+
+    push('%PDF-1.4\n');
+    offsets[1] = len; push('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n');
+    offsets[2] = len; push('2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n');
+    offsets[3] = len; push(`3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pw} ${ph}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>\nendobj\n`);
+    offsets[4] = len;
+    push(`4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${imgW} /Height ${imgH} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpegBytes.length} >>\nstream\n`);
+    push(jpegBytes);
+    push('\nendstream\nendobj\n');
+    offsets[5] = len; push(`5 0 obj\n<< /Length ${content.length} >>\nstream\n${content}\nendstream\nendobj\n`);
+
+    const xrefPos = len;
+    push('xref\n0 6\n0000000000 65535 f \n');
+    for (let n = 1; n <= 5; n++) push(String(offsets[n]).padStart(10, '0') + ' 00000 n \n');
+    push(`trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xrefPos}\n%%EOF`);
+
+    return new Blob(chunks, { type: 'application/pdf' });
+}
+
+async function exportPdf() {
+    try {
+        const canvas = renderScheduleCanvas(3000);
+        const jpeg = new Uint8Array(await (await canvasToJpegBlob(canvas, 0.95)).arrayBuffer());
+        downloadBlob(buildPdf(jpeg, canvas.width, canvas.height), 'schema.pdf');
+    } catch (e) {
+        console.error(e);
+        alert('⚠️ Kunde inte skapa PDF-filen.');
     }
 }
 
