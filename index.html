@@ -122,8 +122,6 @@ const pitches = ["Plan 1","Plan 2","Plan 3","Plan 4","Plan 5"];
 const daysCount = 5;
 // Låsta standardtider per rad (påverkas aldrig av antal tidsslots)
 const ROW_TIMES = ["17:30-19:00", "19:00-20:30", "20:30-22:00"];
-// Gamla standardtider från tidigare versioner – behandlas som "ingen egen tid"
-const LEGACY_TIMES = ["17:30-18:45", "18:45-20:00", "20:00-21:30"];
 const emptyBox = () => ({ text: '', color: 'yellow', time: '' });
 
 function defaultTime(boxId) {
@@ -134,7 +132,7 @@ function defaultTime(boxId) {
 // Ger tiden som ska visas: egen tid om den finns, annars radens låsta standardtid
 function effectiveTime(boxId, data) {
     const t = data && data.time;
-    return (t && !LEGACY_TIMES.includes(t)) ? t : defaultTime(boxId);
+    return t ? t : defaultTime(boxId);
 }
 
 let pitchSlotCounts = { 0: 2, 1: 2, 2: 2, 3: 2, 4: 2 };
